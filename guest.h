@@ -45,12 +45,13 @@ typedef struct {
 /* Function prototypes */
 const char* getVipStatusString(VipStatus status);
 int initializeGuestData(void);
-int addGuest(User *currentUser);
+int addGuest(void);
 int modifyGuest(User *currentUser, int guestId);
 int deleteGuest(User *currentUser, int guestId);
 int getGuestById(int guestId, Guest *guest);
 void listGuests(User *currentUser);
 void searchGuests(User *currentUser);
-void updateGuestStats(int guestId, int stays, double spent);
+int updateGuestStayInfo(int guestId, double amountSpent);
+void guestManagementMenu(User *currentUser);
 
 #endif /* GUEST_H */

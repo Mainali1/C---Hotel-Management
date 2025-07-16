@@ -18,12 +18,13 @@
  int createDirectoryIfNotExists(const char *dirPath);
  
  /**
-  * Backup a file to the backup directory
+  * Backup a file to a specified directory
   * 
   * @param sourceFile Path to the source file
+  * @param backupDir Directory to store the backup file in
   * @return 1 if successful, 0 otherwise
   */
- int backupFile(const char *sourceFile);
+ int backupFile(const char *sourceFile, const char *backupDir);
  
  /**
   * Check if a file exists
@@ -33,13 +34,6 @@
   */
  int fileExists(const char *filePath);
  
- /**
-  * Create a system backup of all data files
-  * 
-  * @return 1 if successful, 0 if any backup failed
-  */
- int createSystemBackup(void);
-
 /**
  * Initialize all data files for the system
  *

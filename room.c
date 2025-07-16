@@ -24,7 +24,7 @@ static int isRoomExists(int roomId);
 #define MAX_ROOMS 1000
 
 /* Get the string representation of a room status */
-const char* getRoomStatusString(int status) {
+const char* getRoomStatusString(RoomStatus status) {
     switch (status) {
         case ROOM_STATUS_AVAILABLE:
             return "Available";
@@ -42,7 +42,7 @@ const char* getRoomStatusString(int status) {
 }
 
 /* Get the string representation of a room type */
-const char* getRoomTypeString(int type) {
+const char* getRoomTypeString(RoomType type) {
     switch (type) {
         case ROOM_TYPE_STANDARD:
             return "Standard";
@@ -185,113 +185,6 @@ int initializeRoomData(void) {
     return 1;
 }
 
-/* Get the string representation of a room type */
-const char* getRoomTypeString(int type) {
-    switch (type) {
-        case ROOM_TYPE_STANDARD:
-            return "Standard";
-        case ROOM_TYPE_DELUXE:
-            return "Deluxe";
-        case ROOM_TYPE_SUITE:
-            return "Suite";
-        case ROOM_TYPE_EXECUTIVE:
-            return "Executive";
-        case ROOM_TYPE_PRESIDENTIAL:
-            return "Presidential";
-        default:
-            return "Unknown";
-    }
-}
-    
-    /* Create data directory if it doesn't exist */
-    createDirectoryIfNotExists("data");
-    
-    /* Check if rooms file already exists */
-    fp = fopen(ROOMS_FILE, "rb");
-    if (fp != NULL) {
-        /* Check if file has content */
-        fseek(fp, 0, SEEK_END);
-        if (ftell(fp) > 0) {
-            fclose(fp);
-            return 0; /* Rooms already exist */
-        }
-        fclose(fp);
-    }
-    
-    /* Create sample rooms */
-    /* Standard rooms */
-    for (i = 0; i < 4; i++) {
-        sampleRooms[i].id = 101 + i;
-        sampleRooms[i].type = ROOM_TYPE_STANDARD;
-        sampleRooms[i].status = ROOM_STATUS_AVAILABLE;
-        sampleRooms[i].rate = 100.0;
-        strcpy(sampleRooms[i].description, "Standard room with basic amenities");
-        strcpy(sampleRooms[i].features, "Queen bed, TV, Wi-Fi, Private bathroom");
-        sampleRooms[i].capacity = 2;
-        sampleRooms[i].floor = 1;
-        sampleRooms[i].isActive = 1;
-    }
-    
-    /* Deluxe rooms */
-    for (i = 4; i < 7; i++) {
-        sampleRooms[i].id = 201 + (i - 4);
-        sampleRooms[i].type = ROOM_TYPE_DELUXE;
-        sampleRooms[i].status = ROOM_STATUS_AVAILABLE;
-        sampleRooms[i].rate = 150.0;
-        strcpy(sampleRooms[i].description, "Deluxe room with enhanced amenities");
-        strcpy(sampleRooms[i].features, "King bed, TV, Wi-Fi, Mini bar, Work desk, Premium bathroom");
-        sampleRooms[i].capacity = 2;
-        sampleRooms[i].floor = 2;
-        sampleRooms[i].isActive = 1;
-    }
-    
-    /* Suite */
-    sampleRooms[7].id = 301;
-    sampleRooms[7].type = ROOM_TYPE_SUITE;
-    sampleRooms[7].status = ROOM_STATUS_AVAILABLE;
-    sampleRooms[7].rate = 250.0;
-    strcpy(sampleRooms[7].description, "Spacious suite with separate living area");
-    strcpy(sampleRooms[7].features, "King bed, Separate living room, TV, Wi-Fi, Mini bar, Work desk, Premium bathroom, Bathtub");
-    sampleRooms[7].capacity = 3;
-    sampleRooms[7].floor = 3;
-    sampleRooms[7].isActive = 1;
-    
-    /* Executive */
-    sampleRooms[8].id = 401;
-    sampleRooms[8].type = ROOM_TYPE_EXECUTIVE;
-    sampleRooms[8].status = ROOM_STATUS_AVAILABLE;
-    sampleRooms[8].rate = 350.0;
-    strcpy(sampleRooms[8].description, "Luxury executive suite with premium amenities");
-    strcpy(sampleRooms[8].features, "King bed, Separate living room, Dining area, TV, Wi-Fi, Mini bar, Work desk, Premium bathroom, Bathtub, City view");
-    sampleRooms[8].capacity = 4;
-    sampleRooms[8].floor = 4;
-    sampleRooms[8].isActive = 1;
-    
-    /* Presidential */
-    sampleRooms[9].id = 501;
-    sampleRooms[9].type = ROOM_TYPE_PRESIDENTIAL;
-    sampleRooms[9].status = ROOM_STATUS_AVAILABLE;
-    sampleRooms[9].rate = 500.0;
-    strcpy(sampleRooms[9].description, "Luxurious presidential suite with the finest amenities");
-    strcpy(sampleRooms[9].features, "King bed, Multiple rooms, Living room, Dining area, Kitchenette, Multiple TVs, Wi-Fi, Mini bar, Work desk, Premium bathroom, Jacuzzi, Panoramic view");
-    sampleRooms[9].capacity = 6;
-    sampleRooms[9].floor = 5;
-    sampleRooms[9].isActive = 1;
-    
-    /* Write sample rooms to file */
-    fp = fopen(ROOMS_FILE, "wb");
-    if (fp == NULL) {
-        return 0; /* Failed to create file */
-    }
-    
-    fwrite(sampleRooms, sizeof(Room), 10, fp);
-    fclose(fp);
-    
-    printf("\nSample room data created.\n");
-    
-    return 1; /* Room data created successfully */
-}
-
 /* Add a new room */
 int addRoom(User *currentUser) {
     FILE *fp;
@@ -395,13 +288,11 @@ static int isRoomExists(int roomId) {
 int modifyRoom(User *currentUser, int roomId) {
     FILE *fp, *tempFp;
     Room tempRoom;
-    int found = 0;
-    int choice;
+    int choice, newType, newCapacity, statusFilter;
     double newRate;
     char newDescription[MAX_ROOM_DESC_LEN];
     char newFeatures[MAX_ROOM_FEATURES_LEN];
-    int newCapacity;
-    int newType;
+    int found = 0;
     
     /* Check if user has permission */
     if (currentUser->role != ROLE_ADMIN) {
@@ -523,7 +414,8 @@ int modifyRoom(User *currentUser, int roomId) {
                     printf("3. Maintenance\n");
                     printf("4. Reserved\n");
                     printf("5. Cleaning\n");
-                    tempRoom.status = getIntInput("Enter new status (1-5): ", 1, 5);
+                    statusFilter = getIntInput("Enter new status (1-5): ", 1, 5);
+                    changeRoomStatus(roomId, statusFilter);
                     break;
             }
         }
@@ -627,7 +519,7 @@ int deleteRoom(User *currentUser, int roomId) {
 }
 
 /* List all rooms */
-void listRooms(User *currentUser, int statusFilter) {
+void listRooms(User *currentUser, RoomStatus statusFilter) {
     FILE *fp;
     Room tempRoom;
     int count = 0;
@@ -740,7 +632,7 @@ void searchRooms(User *currentUser) {
 }
 
 /* Change the status of a room */
-int changeRoomStatus(User *currentUser, int roomId, int newStatus) {
+int changeRoomStatus(int roomId, RoomStatus newStatus) {
     FILE *fp, *tempFp;
     Room tempRoom;
     int found = 0;
@@ -904,7 +796,7 @@ void roomManagementMenu(User *currentUser) {
                     printf("4. Reserved\n");
                     printf("5. Cleaning\n");
                     statusFilter = getIntInput("Enter new status (1-5): ", 1, 5);
-                    changeRoomStatus(currentUser, roomId, statusFilter);
+                    changeRoomStatus(roomId, statusFilter);
                 }
                 break;
                 

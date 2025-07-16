@@ -9,68 +9,60 @@
  #include <stdio.h>
  #include <stdlib.h>
  #include <string.h>
- #include <direct.h> /* For _mkdir on Windows */
- #include <sys/stat.h> /* For stat */
- #include <time.h>
+ #include <sys/stat.h>
+ 
+ // Headers for MS-specific functions
+ #if defined(_WIN32) || defined(_WIN64)
+ #include <direct.h>
+ #define MKDIR(path) _mkdir(path)
+ #else
+ #include <unistd.h>
+ #define MKDIR(path) mkdir(path, 0755)
+ #endif
+
  #include "fileio.h"
+ #include "auth.h"
+ #include "room.h"
+ #include "guest.h"
+ #include "reservation.h"
+ #include "billing.h"
  
  /**
   * Create a directory if it doesn't exist
-  * 
-  * @param dirPath Path to the directory to create
-  * @return 1 if successful or directory already exists, 0 otherwise
   */
  int createDirectoryIfNotExists(const char *dirPath) {
      struct stat st = {0};
-     
-     /* Check if directory already exists */
      if (stat(dirPath, &st) == -1) {
-         /* Directory doesn't exist, create it */
-         if (_mkdir(dirPath) == -1) {
-             printf("\nError: Could not create directory %s\n", dirPath);
+         if (MKDIR(dirPath) != 0) {
+             perror("Error creating directory");
              return 0;
          }
      }
-     
      return 1;
  }
  
  /**
-  * Backup a file to the backup directory
-  * 
-  * @param sourceFile Path to the source file
-  * @return 1 if successful, 0 otherwise
+  * Backup a file to the specified backup directory
   */
- int backupFile(const char *sourceFile) {
+ int backupFile(const char *sourceFile, const char* backupDir) {
      FILE *source, *dest;
      char destFile[256];
      char buffer[1024];
      size_t bytesRead;
-     time_t now;
-     struct tm *t;
-     char timestamp[20];
-     
-     /* Get current time for timestamp */
-     time(&now);
-     t = localtime(&now);
-     strftime(timestamp, sizeof(timestamp), "%Y%m%d_%H%M%S", t);
-     
-     /* Create backup directory if it doesn't exist */
-     if (!createDirectoryIfNotExists("backup")) {
-         return 0;
+     const char *fileName = strrchr(sourceFile, '/');
+     if (!fileName) {
+        fileName = strrchr(sourceFile, '\\');
      }
+     fileName = fileName ? fileName + 1 : sourceFile;
+
+     sprintf(destFile, "%s/%s", backupDir, fileName);
      
-     /* Construct destination filename with timestamp */
-     sprintf(destFile, "backup/%s_%s", timestamp, strrchr(sourceFile, '/') ? strrchr(sourceFile, '/') + 1 : sourceFile);
-     
-     /* Open source file for reading */
      source = fopen(sourceFile, "rb");
      if (source == NULL) {
-         printf("\nError: Could not open source file %s for backup\n", sourceFile);
-         return 0;
+         printf("\nWarning: Could not open source file %s for backup (it may not exist yet).\n", sourceFile);
+         return 1; // Not a fatal error if a file doesn't exist to be backed up
      }
      
-     /* Open destination file for writing */
      dest = fopen(destFile, "wb");
      if (dest == NULL) {
          printf("\nError: Could not create backup file %s\n", destFile);
@@ -78,12 +70,10 @@
          return 0;
      }
      
-     /* Copy file contents */
      while ((bytesRead = fread(buffer, 1, sizeof(buffer), source)) > 0) {
          fwrite(buffer, 1, bytesRead, dest);
      }
      
-     /* Close files */
      fclose(source);
      fclose(dest);
      
@@ -92,97 +82,50 @@
  
  /**
   * Check if a file exists
-  * 
-  * @param filePath Path to the file to check
-  * @return 1 if file exists, 0 otherwise
   */
  int fileExists(const char *filePath) {
      FILE *fp = fopen(filePath, "rb");
-     if (fp != NULL) {
+     if (fp) {
          fclose(fp);
          return 1;
      }
      return 0;
  }
  
- /**
-  * Create a system backup of all data files
-  * 
-  * @return 1 if successful, 0 if any backup failed
-  */
- int createSystemBackup(void) {
-     /* TODO: Implement system backup functionality */
-     return 1;
- }
-
 /**
  * Initialize all data files for the system
- *
- * @return 1 if successful, 0 if any initialization failed
  */
 int initializeDataFiles(void) {
-    /* Create data directory if it doesn't exist */
-    if (!createDirectoryIfNotExists("data")) {
-        printf("\nError: Failed to create data directory\n");
-        return 0;
-    }
-
-    /* Initialize all data files */
-    if (!initializeUserData()) {
-        printf("\nError: Failed to initialize user data\n");
-        return 0;
-    }
-
-    if (!initializeRoomData()) {
-        printf("\nError: Failed to initialize room data\n");
-        return 0;
-    }
-
-    if (!initializeGuestData()) {
-        printf("\nError: Failed to initialize guest data\n");
-        return 0;
-    }
-
-    if (!initializeBillingData()) {
-        printf("\nError: Failed to initialize billing data\n");
-        return 0;
-    }
-
-    printf("\nAll data files initialized successfully.\n");
+    if (!initializeUserData()) return 0;
+    if (!initializeRoomData()) return 0;
+    if (!initializeGuestData()) return 0;
+    if (!initializeReservationData()) return 0;
+    if (!initializeBillingData()) return 0;
     return 1;
 }
 
 /**
  * Load system configuration from file
- *
- * @return 1 if successful, 0 if failed
  */
 int loadConfiguration(void) {
-    /* TODO: Implement configuration loading */
+    // Stub for future implementation
     return 1;
 }
 
 /**
  * Backup all data files to specified directory
- *
- * @param backupDir Directory to store backup files
- * @return 1 if successful, 0 if any backup failed
  */
 int backupDataFiles(const char *backupDir) {
-    /* Create backup directory if it doesn't exist */
-    if (!createDirectoryIfNotExists(backupDir)) {
-        return 0;
-    }
+    createDirectoryIfNotExists(backupDir);
     
-    /* Backup all data files */
-    if (!backupFile("data/users.dat") || 
-        !backupFile("data/rooms.dat") || 
-        !backupFile("data/guests.dat") || 
-        !backupFile("data/reservations.dat") || 
-        !backupFile("data/invoices.dat") || 
-        !backupFile("data/payments.dat")) {
-        return 0;
-    }
-    
-    return 1;
+    int success = 1;
+    if (!backupFile(USERS_FILE, backupDir)) success = 0;
+    if (!backupFile(ROOMS_FILE, backupDir)) success = 0;
+    if (!backupFile(GUESTS_FILE, backupDir)) success = 0;
+    if (!backupFile(RESERVATIONS_FILE, backupDir)) success = 0;
+    if (!backupFile(INVOICES_FILE, backupDir)) success = 0;
+    if (!backupFile(BILLING_ITEMS_FILE, backupDir)) success = 0;
+    if (!backupFile(PAYMENTS_FILE, backupDir)) success = 0;
+
+    return success;
 }

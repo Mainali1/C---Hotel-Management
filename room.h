@@ -13,6 +13,7 @@
 
 /* Room status definitions */
 typedef enum {
+    ROOM_STATUS_DUMMY = 0, // To make filters start from 1
     ROOM_STATUS_AVAILABLE,
     ROOM_STATUS_OCCUPIED,
     ROOM_STATUS_MAINTENANCE,
@@ -22,6 +23,7 @@ typedef enum {
 
 /* Room type definitions */
 typedef enum {
+    ROOM_TYPE_DUMMY = 0, // To make filters start from 1
     ROOM_TYPE_STANDARD,
     ROOM_TYPE_DELUXE,
     ROOM_TYPE_SUITE,
@@ -56,10 +58,10 @@ int initializeRoomData(void);
 int addRoom(User *currentUser);
 int modifyRoom(User *currentUser, int roomId);
 int deleteRoom(User *currentUser, int roomId);
-int changeRoomStatus(User *currentUser, int roomId, int newStatus);
+int changeRoomStatus(int roomId, RoomStatus newStatus);
 int getRoomById(int roomId, Room *room);
-int isRoomAvailable(int roomId, const char *startDate, const char *endDate);
-void listRooms(User *currentUser, int statusFilter);
+void listRooms(User *currentUser, RoomStatus statusFilter);
 void searchRooms(User *currentUser);
+void roomManagementMenu(User *currentUser);
 
 #endif /* ROOM_H */
