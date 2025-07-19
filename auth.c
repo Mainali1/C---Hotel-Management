@@ -21,8 +21,7 @@
  
  #define TEMP_FILE "data/temp_users.dat"
  
- /* Simple password hashing function for academic purposes
-    Note: In a real system, use a proper cryptographic hash function */
+ /* Simple password hashing function for academic purposes*/
  void hashPassword(const char *password, char *hashedPassword) {
      unsigned long hash = 5381;
      int c;
